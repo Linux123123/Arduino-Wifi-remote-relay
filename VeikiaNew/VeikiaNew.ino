@@ -3,6 +3,7 @@
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
+#include <DNSServer.h>
 #include <SPI.h>
 #include <nRF24L01.h>
 #include <RF24.h>
@@ -18,8 +19,8 @@ const char* password = "12345678";  //Enter Password here
 
 String isCommunicating;
 
-IPAddress local_ip(192,168,2,1);
-IPAddress gateway(192,168,2,1);
+IPAddress local_ip(192,168,1,1);
+IPAddress gateway(192,168,1,1);
 IPAddress subnet(255,255,255,0);
 
 typedef struct{
@@ -105,18 +106,23 @@ var meVar = setInterval(meFunction, 650);
 
 RF24 radio(D1, D2); //CE-CSN
 ESP8266WebServer server(80);
+DNSServer dnsServer;
 
 void setup()
 {
-   WiFi.softAP(ssid, password, 8);
+   WiFi.mode(WIFI_AP);
+   WiFi.softAP(ssid, password);
    WiFi.softAPConfig(local_ip, gateway, subnet);
+
+   dnsServer.start(53, "*", local_ip);
+
    delay(100);
    radio.begin();
    radio.setChannel(90);
    radio.setRetries(15, 15);
    radio.enableAckPayload();
    radio.setDataRate(RF24_250KBPS);
-   radio.setPALevel(RF24_PA_MAX);
+   radio.setPALevel(RF24_PA_LOW);
    radio.openWritingPipe(rxAddr);
    radio.stopListening();
    server.on("/", handle_OnConnect);
@@ -128,6 +134,7 @@ void setup()
 void loop()
 {
    server.handleClient();
+   dnsServer.processNextRequest();
    senddata();
    receivedata();
    proccesdata();
